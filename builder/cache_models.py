@@ -37,8 +37,6 @@ def fetch_pretrained_model_with_controlnet(model_class, model_name, controlnet, 
             else:
                 raise
 
-
-
 def get_diffusion_pipelines():
     '''
     Fetches the Stable Diffusion XL pipelines from the HuggingFace model hub.
@@ -57,10 +55,10 @@ def get_diffusion_pipelines():
                                                           
     sdxl_inpaint_pipe = fetch_pretrained_model(StableDiffusionXLPipeline,
                                   "stabilityai/stable-diffusion-xl-base-1.0", **common_args)
-    refiner = fetch_pretrained_model(StableDiffusionXLImg2ImgPipeline,
-                                     "stabilityai/stable-diffusion-xl-refiner-1.0", **common_args)
+    # refiner = fetch_pretrained_model(StableDiffusionXLImg2ImgPipeline,
+    #                                  "stabilityai/stable-diffusion-xl-refiner-1.0", **common_args)
 
-    return sdxl_inpaint_pipe, sdxl_contorlnet_inpaint_pipe, refiner
+    return sdxl_inpaint_pipe, sdxl_contorlnet_inpaint_pipe
 
 
 if __name__ == "__main__":
