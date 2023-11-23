@@ -47,7 +47,7 @@ class ModelHandler:
         sdxl_controlnet_outpaint_pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
             "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
             controlnet=canny_controlnet,
-            torch_dtype=torch.float16, 
+            torch_dtype=torch.float16,
             use_safetensors=True,
             add_watermarker=False
         ).to("cuda", silence_dtype_warnings=True)
