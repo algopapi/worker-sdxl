@@ -1,9 +1,34 @@
 INPUT_SCHEMA = {
+    'model': {
+      'type': str,
+      'required': True
+    },
+    'image_url': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'mask_url': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
     'prompt': {
         'type': str,
         'required': False,
+        'default': None
     },
     'negative_prompt': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'prompt_2': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'negative_prompt_2': {
         'type': str,
         'required': False,
         'default': None
@@ -47,11 +72,6 @@ INPUT_SCHEMA = {
         'type': float,
         'required': False,
         'default': 0.3
-    },
-    'image_url': {
-        'type': str,
-        'required': False,
-        'default': None
     },
     'num_images': {
         'type': int,

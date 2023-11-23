@@ -1,7 +1,8 @@
 # builder/model_fetcher.py
 
 import torch
-from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline
+from diffusers import (StableDiffusionXL, StableDiffusionXLImg2ImgPipeline,
+                       StableDiffusionXLPipeline)
 
 
 def fetch_pretrained_model(model_class, model_name, **kwargs):
@@ -29,7 +30,6 @@ def get_diffusion_pipelines():
         "variant": "fp16",
         "use_safetensors": True
     }
-
     pipe = fetch_pretrained_model(StableDiffusionXLPipeline,
                                   "stabilityai/stable-diffusion-xl-base-1.0", **common_args)
     refiner = fetch_pretrained_model(StableDiffusionXLImg2ImgPipeline,

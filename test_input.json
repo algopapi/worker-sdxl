@@ -1,0 +1,8 @@
+{
+  "input": {
+    "model": "sdxl_inpaint",
+    "prompt": "A nice table",
+    "image_url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/inpaint.png",
+    "mask_url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/inpaint_mask.png"
+  }
+}

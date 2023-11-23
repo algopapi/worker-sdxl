@@ -2,24 +2,21 @@
 Contains the handler function that will be called by the serverless.
 '''
 
-import os
 import base64
 import concurrent.futures
-
-import torch
-from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline
-from diffusers.utils import load_image
-
-from diffusers import (
-    PNDMScheduler,
-    LMSDiscreteScheduler,
-    DDIMScheduler,
-    EulerDiscreteScheduler,
-    DPMSolverMultistepScheduler,
-)
+import os
 
 import runpod
-from runpod.serverless.utils import rp_upload, rp_cleanup
+import torch
+from diffusers import (ControlNetModel, DDIMScheduler,
+                       DPMSolverMultistepScheduler, EulerDiscreteScheduler,
+                       LMSDiscreteScheduler, PNDMScheduler,
+                       StableDiffusionXLControlNetInpaintPipeline,
+                       StableDiffusionXLImg2ImgPipeline,
+                       StableDiffusionXLInpaintPipeline,
+                       StableDiffusionXLPipeline)
+from diffusers.utils import load_image
+from runpod.serverless.utils import rp_cleanup, rp_upload
 from runpod.serverless.utils.rp_validator import validate
 
 from rp_schemas import INPUT_SCHEMA
@@ -29,34 +26,43 @@ torch.cuda.empty_cache()
 # ------------------------------- Model Handler ------------------------------ #
 class ModelHandler:
     def __init__(self):
-        self.base = None
-        self.refiner = None
+        self.sdxl_inpaint = None
+        self.sdxl_canny_controlnet_inpaint = None
         self.load_models()
-
-    def load_base(self):
-        base_pipe = StableDiffusionXLPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
+    
+    def load_sdxl_inpaint(self):
+        sdxl_outpaint_pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
+            "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
             torch_dtype=torch.float16, variant="fp16", use_safetensors=True, add_watermarker=False
         ).to("cuda", silence_dtype_warnings=True)
-        base_pipe.enable_xformers_memory_efficient_attention()
-        return base_pipe
+        sdxl_outpaint_pipe.enable_xformers_memory_efficient_attention()
+        return sdxl_outpaint_pipe
+    
+    def load_sdxl_canny_controlnet_inpaint(self):
+        canny_controlnet = ControlNetModel.from_pretrained(
+            "diffusers/controlnet-canny-sdxl-1.0",
+            use_safetensors=True, add_watermarker=False
+        )
 
-
-    def load_refiner(self):
-        refiner_pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-refiner-1.0",
-            torch_dtype=torch.float16, variant="fp16", use_safetensors=True, add_watermarker=False
+        sdxl_controlnet_outpaint_pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
+            "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+            controlnet=canny_controlnet,
+            #torch_dtype=torch.float32, 
+            #variant="fp32", 
+            use_safetensors=True,
+            add_watermarker=False
         ).to("cuda", silence_dtype_warnings=True)
-        refiner_pipe.enable_xformers_memory_efficient_attention()
-        return refiner_pipe
 
+        sdxl_controlnet_outpaint_pipe.enable_xformers_memory_efficient_attention()
+        return sdxl_controlnet_outpaint_pipe
+    
     def load_models(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_base = executor.submit(self.load_base)
-            future_refiner = executor.submit(self.load_refiner)
-
-            self.base = future_base.result()
-            self.refiner = future_refiner.result()
+            future_sdxl_inpaint = executor.submit(self.load_sdxl_inpaint)
+            future_sdxl_inpaint_canny_controlnet = executor.submit(self.load_sdxl_canny_controlnet_inpaint)
+            
+            self.sdxl_inpaint = future_sdxl_inpaint.result()
+            self.sdxl_canny_controlnet_inpaint = future_sdxl_inpaint_canny_controlnet.result()
 
 MODELS = ModelHandler()
 
@@ -90,6 +96,65 @@ def make_scheduler(name, config):
     }[name]
 
 
+def sdxl_controlnet_inpaint_job(job_input: INPUT_SCHEMA):
+    prompt = job_input['prompt']
+    image = job_input['image_url']
+    mask = job_input['mask_url']
+    control = job_input['control_image_url']
+    
+    if job_input['seed'] is None:
+        job_input['seed'] = int.from_bytes(os.urandom(2), "big")
+
+    generator = torch.Generator("cuda").manual_seed(job_input['seed'])
+    
+    image = load_image(image).convert("RGB")
+    mask = load_image(mask).convert("RGB")
+    control_image = load_image(control).convert("RGB")
+
+    inpaint_output = MODELS.sdxl_inpaint(
+        prompt=prompt,
+        image=image,
+        mask=mask,
+        control_image=control_image,
+        num_inference_steps=job_input['num_inference_steps'],
+        guidance_scale=job_input['guidance_scale'],
+        output_type="image",
+        num_images_per_prompt=job_input['num_images'],
+        generator=generator
+    ).images
+
+    return inpaint_output
+
+
+def sdxl_inpaint_job(job_input: INPUT_SCHEMA):
+    prompt = job_input['prompt']
+    image = job_input['image_url']
+    mask = job_input['mask_url']
+    
+    if job_input['seed'] is None:
+        job_input['seed'] = int.from_bytes(os.urandom(2), "big")
+
+    generator = torch.Generator("cuda").manual_seed(job_input['seed'])
+    
+    image = load_image(image).convert("RGB")
+    mask = load_image(mask).convert("RGB")
+
+    inpaint_output = MODELS.sdxl_inpaint(
+        prompt=prompt,
+        image=image,
+        mask_image=mask,
+        num_inference_steps=job_input['num_inference_steps'],
+        guidance_scale=job_input['guidance_scale'],
+        output_type="image",
+        num_images_per_prompt=job_input['num_images'],
+        wdith=job_input['width'],
+        height=job_input['height'],
+        generator=generator
+    ).images
+
+    return inpaint_output
+
+
 @torch.inference_mode()
 def generate_image(job):
     '''
@@ -104,49 +169,16 @@ def generate_image(job):
         return {"error": validated_input['errors']}
     job_input = validated_input['validated_input']
 
-    starting_image = job_input['image_url']
-
-    if job_input['seed'] is None:
-        job_input['seed'] = int.from_bytes(os.urandom(2), "big")
-
-    generator = torch.Generator("cuda").manual_seed(job_input['seed'])
-
-    MODELS.base.scheduler = make_scheduler(job_input['scheduler'], MODELS.base.scheduler.config)
-
-    if starting_image:  # If image_url is provided, run only the refiner pipeline
-        init_image = load_image(starting_image).convert("RGB")
-        output = MODELS.refiner(
-            prompt=job_input['prompt'],
-            num_inference_steps=job_input['refiner_inference_steps'],
-            strength=job_input['strength'],
-            image=init_image,
-            generator=generator
-        ).images
+    requested_model = job_input['model']
+    if requested_model == "sdxl_inpaint":
+        inpaint_output = sdxl_inpaint_job(job_input)
+    elif requested_model == "sdxl_controlnet_inpaint":
+        inpaint_output = sdxl_controlnet_inpaint_job(job_input)
     else:
-        # Generate latent image using pipe
-        image = MODELS.base(
-            prompt=job_input['prompt'],
-            negative_prompt=job_input['negative_prompt'],
-            height=job_input['height'],
-            width=job_input['width'],
-            num_inference_steps=job_input['num_inference_steps'],
-            guidance_scale=job_input['guidance_scale'],
-            output_type="latent",
-            num_images_per_prompt=job_input['num_images'],
-            generator=generator
-        ).images
+        inpaint_output = None
+    
 
-        # Refine the image using refiner with refiner_inference_steps
-        output = MODELS.refiner(
-            prompt=job_input['prompt'],
-            num_inference_steps=job_input['refiner_inference_steps'],
-            strength=job_input['strength'],
-            image=image,
-            num_images_per_prompt=job_input['num_images'],
-            generator=generator
-        ).images
-
-    image_urls = _save_and_upload_images(output, job['id'])
+    image_urls = _save_and_upload_images(inpaint_output, job['id'])
 
     results = {
         "images": image_urls,
@@ -154,7 +186,7 @@ def generate_image(job):
         "seed": job_input['seed']
     }
 
-    if starting_image:
+    if image:
         results['refresh_worker'] = True
 
     return results
