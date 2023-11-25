@@ -58,7 +58,7 @@ class ModelHandler:
         ).to("cuda", silence_dtype_warnings=True)
 
         sdxl_controlnet_outpaint_pipe.enable_xformers_memory_efficient_attention()
-        return sdxl_controlnet_outpaint_pipe, canny_controlnet # <- i added the control net here 
+        return sdxl_controlnet_outpaint_pipe
     
     def load_models(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
