@@ -1,34 +1,10 @@
 INPUT_SCHEMA = {
-    'model': {
-      'type': str,
-      'required': True
-    },
     'image_url': {
         'type': str,
         'required': False,
         'default': None
     },
     'mask_url': {
-        'type': str,
-        'required': False,
-        'default': None
-    },
-    'prompt': {
-        'type': str,
-        'required': False,
-        'default': None
-    },
-    'negative_prompt': {
-        'type': str,
-        'required': False,
-        'default': None
-    },
-    'prompt_2': {
-        'type': str,
-        'required': False,
-        'default': None
-    },
-    'negative_prompt_2': {
         'type': str,
         'required': False,
         'default': None
@@ -48,35 +24,93 @@ INPUT_SCHEMA = {
         'required': False,
         'default': None
     },
-    'scheduler': {
+    # STEP 1 PARAMS
+    'step_1_prompt': {
         'type': str,
         'required': False,
-        'default': 'DDIM'
+        'default': None
     },
-    'num_inference_steps': {
+    'step_1_negative_prompt': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_1_prompt_2': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_1_negative_prompt_2': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_1_num_inference_steps': {
         'type': int,
         'required': False,
         'default': 25
     },
-    'refiner_inference_steps': {
-        'type': int,
-        'required': False,
-        'default': 50
-    },
-    'guidance_scale': {
+    'step_1_guidance_scale': {
         'type': float,
         'required': False,
-        'default': 7.5
+        'default': 5
     },
-    'strength': {
+    'step_1_strength': {
         'type': float,
         'required': False,
         'default': 0.3
     },
-    'num_images': {
+    'step_1_num_images': {
         'type': int,
         'required': False,
         'default': 1,
         'constraints': lambda img_count: 3 > img_count > 0
-    }
+    },
+    # STEP 2 PARAMS
+    'step_2_prompt': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_2_negative_prompt': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_2_prompt_2': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_2_negative_prompt_2': {
+        'type': str,
+        'required': False,
+        'default': None
+    },
+    'step_2_num_inference_steps': {
+        'type': int,
+        'required': False,
+        'default': 50
+    },
+    'step_2_guidance_scale': {
+        'type': float,
+        'required': False,
+        'default': 6
+    },
+    'step_2_strength': {
+        'type': float,
+        'required': False,
+        'default': 0.3
+    },
+    'step_2_num_images': {
+        'type': int,
+        'required': False,
+        'default': 1,
+        'constraints': lambda img_count: 3 > img_count > 0
+    },
+    'step_2_controlnet_conditioning_scale': {
+        'type': float,
+        'required': False,
+        'default': 0.4
+    },
 }

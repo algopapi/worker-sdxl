@@ -1,8 +1,0 @@
-{
-  "model": "sdxl_inpaint",
-  "prompt": "A nice table",
-  "image": "https://i.imgur.com/2zYQJ5M.png",
-  "mask": "https://i.imgur.com/2zYQJ5M.png",
-  "width": 512,
-  "height": 512
-}

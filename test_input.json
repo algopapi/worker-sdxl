@@ -1,8 +1,7 @@
 {
   "input": {
-    "model": "sdxl_inpaint",
-    "prompt": "A nice table",
-    "image_url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/inpaint.png",
-    "mask_url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/inpaint_mask.png"
+    "step_1_prompt": "A realistic interior photograph of a modern living room with a white sofa.",
+    "image_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myImage.png",
+    "mask_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myMask.png"
   }
 }

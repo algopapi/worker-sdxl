@@ -3,15 +3,16 @@
 import torch
 from diffusers import (ControlNetModel,
                        StableDiffusionXLControlNetInpaintPipeline,
-                       StableDiffusionXLImg2ImgPipeline,
-                       StableDiffusionXLInpaintPipeline,
-                       StableDiffusionXLPipeline)
+                       StableDiffusionXLInpaintPipeline)
+
+# FIX THIS
 
 
 def fetch_pretrained_model(model_class, model_name, **kwargs):
     '''
     Fetches a pretrained model from the HuggingFace model hub.
     '''
+    print("FETCHING PRETRAINED MODEL")
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -27,6 +28,7 @@ def fetch_pretrained_model_with_controlnet(model_class, model_name, controlnet, 
     '''
     Fetches a pretrained model from the HuggingFace model hub.
     '''
+    print("FETCHING PRETRAINED MODEL")
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -39,7 +41,6 @@ def fetch_pretrained_model_with_controlnet(model_class, model_name, controlnet, 
                 raise
 
 
-
 def get_diffusion_pipelines():
     '''
     Fetches the Stable Diffusion XL pipelines from the HuggingFace model hub.
@@ -49,9 +50,12 @@ def get_diffusion_pipelines():
         "variant": "fp16",
         "use_safetensors": True
     }
+    sdxl_inpaint_pipe = fetch_pretrained_model(StableDiffusionXLInpaintPipeline,
+                            "diffusers/stable-diffusion-xl-1.0-inpainting-0.1", **common_args)
+    
     controlnet = fetch_pretrained_model(ControlNetModel, "diffusers/controlnet-canny-sdxl-1.0",
                                         **common_args)
-    
+
     sdxl_contorlnet_inpaint_pipe = fetch_pretrained_model_with_controlnet(
         model_class=StableDiffusionXLControlNetInpaintPipeline,
         model_name="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
@@ -59,11 +63,7 @@ def get_diffusion_pipelines():
         **common_args
     )
                                                           
-    sdxl_inpaint_pipe = fetch_pretrained_model(StableDiffusionXLInpaintPipeline,
-                                  "diffusers/stable-diffusion-xl-1.0-inpainting-0.1", **common_args)
-    
-
-    return sdxl_inpaint_pipe, sdxl_contorlnet_inpaint_pipe
+    return sdxl_inpaint_pipe, sdxl_contorlnet_inpaint_pipe, controlnet
 
 
 if __name__ == "__main__":
