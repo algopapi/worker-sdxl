@@ -69,7 +69,7 @@ INPUT_SCHEMA = {
     'step_1_controlnet_conditioning_scale': {
         'type': float,
         'required': False,
-        'default': 0.5
+        'default': 0.25
     },
     'step_1_refiner_num_inference_steps': {
         'type': int,
@@ -126,6 +126,6 @@ INPUT_SCHEMA = {
     'step_2_refiner_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 8
+        'default': 6
     },
 }
