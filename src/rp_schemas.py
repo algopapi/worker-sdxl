@@ -38,12 +38,12 @@ INPUT_SCHEMA = {
     'step_1_prompt_2': {
         'type': str,
         'required': False,
-        'default': None
+        'default': "pretty, beautiful, realism, high quality, high fidelity, detailed,  raw, furniture, interior, sharp, clear, high resolution"
     },
     'step_1_negative_prompt_2': {
         'type': str,
         'required': False,
-        'default': None
+        'default': "ugly, deformed, noisy, blurry, distorted, out of focus, bad structure, extra table legs, poorly drawn furniture, poorly framed furniture, bad lighting",
     },
     'step_1_num_inference_steps': {
         'type': int,
@@ -53,12 +53,12 @@ INPUT_SCHEMA = {
     'step_1_guidance_scale': {
         'type': float,
         'required': False,
-        'default': 5
+        'default': 7
     },
     'step_1_strength': {
         'type': float,
         'required': False,
-        'default': 0.3
+        'default': 1.0
     },
     'step_1_num_images': {
         'type': int,
@@ -66,21 +66,31 @@ INPUT_SCHEMA = {
         'default': 1,
         'constraints': lambda img_count: 3 > img_count > 0
     },
+    'step_1_controlnet_conditioning_scale': {
+        'type': float,
+        'required': False,
+        'default': 0.5
+    },
+    'step_1_refiner_num_inference_steps': {
+        'type': int,
+        'required': False,
+        'default': 30
+    },
     # STEP 2 PARAMS
     'step_2_prompt': {
         'type': str,
         'required': False,
-        'default': None
+        'default': None,
     },
     'step_2_negative_prompt': {
         'type': str,
         'required': False,
-        'default': None
+        'default':  "ugly, deformed, noisy, blurry, distorted, out of focus, bad structure, extra table legs, poorly drawn furniture, poorly framed furniture, bad lighting"
     },
     'step_2_prompt_2': {
         'type': str,
         'required': False,
-        'default': None
+        'default': "pretty, beautiful, realism, high quality, high fidelity, detailed,  raw, furniture, interior, sharp, clear, high resolution"
     },
     'step_2_negative_prompt_2': {
         'type': str,
@@ -95,12 +105,12 @@ INPUT_SCHEMA = {
     'step_2_guidance_scale': {
         'type': float,
         'required': False,
-        'default': 6
+        'default': 7
     },
     'step_2_strength': {
         'type': float,
         'required': False,
-        'default': 0.3
+        'default': 1.0
     },
     'step_2_num_images': {
         'type': int,
@@ -111,6 +121,11 @@ INPUT_SCHEMA = {
     'step_2_controlnet_conditioning_scale': {
         'type': float,
         'required': False,
-        'default': 0.4
+        'default': 0.5
+    },
+    'step_2_refiner_num_inference_steps': {
+        'type': int,
+        'required': False,
+        'default': 8
     },
 }
