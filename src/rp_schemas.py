@@ -33,17 +33,17 @@ INPUT_SCHEMA = {
     'step_1_negative_prompt': {
         'type': str,
         'required': False,
-        'default': None
+        'default': "Do not change the furniture in the scene. Multiple furniture items in the room, chairs in front of the table, strange furniture proportions, bad interior design."
     },
     'step_1_prompt_2': {
         'type': str,
         'required': False,
-        'default': "pretty, beautiful, realism, high quality, high fidelity, detailed,  raw, furniture, interior, sharp, clear, high resolution"
+        'default': None
     },
     'step_1_negative_prompt_2': {
         'type': str,
         'required': False,
-        'default': "ugly, deformed, noisy, blurry, distorted, out of focus, bad structure, extra table legs, poorly drawn furniture, poorly framed furniture, bad lighting",
+        'default': "ugly, messy, cluttered, out of frame, out of focus, multiple products, full room, deformed, blurry, bad proportions, gross proportions, missing legs, extra legs, duplicate, low quality, bad positioning, bad interior design, ugly interior, ugly room, ugly furniture, messy room, messy interior, garbage, dirty, unorganized",
     },
     'step_1_num_inference_steps': {
         'type': int,
@@ -69,12 +69,12 @@ INPUT_SCHEMA = {
     'step_1_controlnet_conditioning_scale': {
         'type': float,
         'required': False,
-        'default': 0.25
+        'default': 0.3,
     },
     'step_1_refiner_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 30
+        'default': 50,
     },
     # STEP 2 PARAMS
     'step_2_prompt': {
@@ -85,17 +85,17 @@ INPUT_SCHEMA = {
     'step_2_negative_prompt': {
         'type': str,
         'required': False,
-        'default':  "ugly, deformed, noisy, blurry, distorted, out of focus, bad structure, extra table legs, poorly drawn furniture, poorly framed furniture, bad lighting"
+        'default': "Floating furniture, strangly positioned furniture, furniture in the wrong place. strange furniture proportions. Bad room proportions."
     },
     'step_2_prompt_2': {
         'type': str,
         'required': False,
-        'default': "pretty, beautiful, realism, high quality, high fidelity, detailed,  raw, furniture, interior, sharp, clear, high resolution"
+        'default': None,
     },
     'step_2_negative_prompt_2': {
         'type': str,
         'required': False,
-        'default': None
+        'default':"ugly, messy, cluttered, out of frame, out of focus, multiple products, full room, deformed, blurry, bad proportions, gross proportions, missing legs, extra legs, duplicate, low quality, bad positioning, bad interior design, ugly interior, ugly room, ugly furniture, messy room, messy interior, garbage, dirty, unorganized"
     },
     'step_2_num_inference_steps': {
         'type': int,
@@ -121,11 +121,18 @@ INPUT_SCHEMA = {
     'step_2_controlnet_conditioning_scale': {
         'type': float,
         'required': False,
-        'default': 0.5
+        'default': 0.4
     },
     'step_2_refiner_num_inference_steps': {
         'type': int,
         'required': False,
+        'default': 50
+    },
+    # STEP 3 (QUICK REFINER)
+    'step_3_refiner_num_inference_steps': {
+        'type': int,
+        'required': False,
         'default': 6
     },
+
 }

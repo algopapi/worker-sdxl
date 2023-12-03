@@ -15,6 +15,8 @@ from diffusers import (ControlNetModel, DDIMScheduler, DiffusionPipeline,
                        LMSDiscreteScheduler, PNDMScheduler,
                        StableDiffusionXLControlNetInpaintPipeline,
                        StableDiffusionXLInpaintPipeline)
+from diffusers.pipelines.stable_diffusion_xl.pipeline_output import \
+    StableDiffusionXLPipelineOutput
 from diffusers.utils import load_image
 from PIL import Image, ImageChops
 from runpod.serverless.utils import rp_cleanup, rp_upload
@@ -28,14 +30,15 @@ torch.cuda.empty_cache()
 class ModelHandler:
     def __init__(self):
         self.sdxl_refiner = None
+        self.sdxl_inpaint_refiner = None
         self.sdxl_canny_controlnet_inpaint = None
         self.load_models()
     
     def load_sdxl_refiner(self):
         sdxl_refiner = DiffusionPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
-            torch_dtype=torch.float16,
-            variant="fp16",
+            #torch_dtype=torch.float16,
+            #variant="fp16",
         ).to("cuda")
         sdxl_refiner.enable_xformers_memory_efficient_attention()
         return sdxl_refiner
@@ -43,26 +46,36 @@ class ModelHandler:
     def load_sdxl_canny_controlnet_inpaint(self):
         canny_controlnet = ControlNetModel.from_pretrained(
             "diffusers/controlnet-canny-sdxl-1.0",
-            torch_dtype=torch.float16,
-            variant="fp16",
+            #torch_dtype=torch.float16,
+            #variant="fp16",
         )
 
         sdxl_controlnet_outpaint_pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
             "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
             controlnet=canny_controlnet,
-            torch_dtype=torch.float16,
-            variant="fp16",
+            #torch_dtype=torch.float16,
+            #variant="fp16",
         ).to("cuda")
 
+        sdxl_inpaint_refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
+            "stabilityai/stable-diffusion-xl-refiner-1.0",
+            text_encoder_2=sdxl_controlnet_outpaint_pipe.text_encoder_2,
+            vae=sdxl_controlnet_outpaint_pipe.vae,
+            #torch_dtype=torch.float16,
+            #variant="fp16"
+        ).to("cuda")
+
+        sdxl_inpaint_refiner.enable_xformers_memory_efficient_attention()
         sdxl_controlnet_outpaint_pipe.enable_xformers_memory_efficient_attention()
-        return sdxl_controlnet_outpaint_pipe
+        
+        return sdxl_controlnet_outpaint_pipe, sdxl_inpaint_refiner
     
     def load_models(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_sdxl_refiner = executor.submit(self.load_sdxl_refiner)
             future_sdxl_inpaint_canny_controlnet = executor.submit(self.load_sdxl_canny_controlnet_inpaint) # << fix it hre
             self.sdxl_refiner = future_sdxl_refiner.result()
-            self.sdxl_canny_controlnet_inpaint = future_sdxl_inpaint_canny_controlnet.result() # < and here
+            self.sdxl_canny_controlnet_inpaint, self.sdxl_inpaint_refiner = future_sdxl_inpaint_canny_controlnet.result() # < and here
 
 MODELS = ModelHandler()
 
@@ -114,6 +127,7 @@ def create_canny_edge_image(image_input: Image.Image):
     image = image[:, :, None]
     image = np.concatenate([image, image, image], axis=2)
     return Image.fromarray(image)
+
 
 def rehydrate_canny(canny_image: Image.Image, og_canny: Image.Image, mask: Image.Image, job_input) -> Image.Image:
     mask_inverted = ImageChops.invert(mask.convert('L'))
@@ -181,8 +195,36 @@ def second_step_controlnet_inpaint(image: Image.Image, canny_image: Image.Image,
         num_images_per_prompt=job_input['step_2_num_images'],
         output_type="latent",
         #generator=generator,
-    ).images[0]
-    
+    ).images
+
+def sdxl_inpaint_refine(
+        image_latents: torch.Tensor,
+        mask: Image.Image,
+        prompt: str,
+        width: int,
+        height: int,
+        negative_prompt: str,
+        prompt_2: str,
+        negative_prompt_2: str,
+        num_inference_steps: int,
+        guidance_scale: float,
+        output_type: str,
+        strength: float,
+)-> Image.Image:
+    return MODELS.sdxl_inpaint_refiner(
+        prompt=prompt,
+        strength=strength,
+        mask_image=mask,
+        image=image_latents,
+        width=width,
+        height=height,
+        negative_prompt=negative_prompt,
+        prompt_2=prompt_2,
+        negative_prompt_2=negative_prompt_2,
+        num_inference_steps=num_inference_steps,
+        guidance_scale=guidance_scale,
+        output_type=output_type,
+    ).images
 
 def sdxl_refine(
         image_latents: torch.Tensor,
@@ -205,8 +247,7 @@ def sdxl_refine(
         negative_prompt_2=negative_prompt_2,
         num_inference_steps=num_inference_steps,
         guidance_scale=guidance_scale,
-    ).images[0]
-
+    ).images
 
 def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
     step_1_prompt = job_input['step_1_prompt']
@@ -232,8 +273,9 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
     # 1. Create first step canny edge
     first_step_canny_edge = create_canny_edge_image(image)
     first_step_canny_edge.save("./debug/first_step_canny.png")
+    print("succefully created canny edge")
  
-    firs_step_outpaint_latents = first_step_controlnet_inpaint(
+    first_step_outpaint_latents = first_step_controlnet_inpaint(
         image=image,
         canny_image=first_step_canny_edge,
         mask=mask,
@@ -241,8 +283,18 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         job_input=job_input,
     )
 
-    first_step_outpaint_image = sdxl_refine(
-        image_latents = firs_step_outpaint_latents,
+    intermediary_image = MODELS.sdxl_canny_controlnet_inpaint.vae.decode(
+        first_step_outpaint_latents / MODELS.sdxl_canny_controlnet_inpaint.vae.config.scaling_factor,
+        return_dict=False,
+    )[0].detach()
+    intermediary_image =  MODELS.sdxl_canny_controlnet_inpaint.image_processor.postprocess(intermediary_image, output_type="pil")
+    intermediary_image = StableDiffusionXLPipelineOutput(images=intermediary_image)
+    intermediary_image = intermediary_image.images[0]
+    intermediary_image.save("./debug/first_step_pre_refiner.png")
+
+    first_step_outpaint_image = sdxl_inpaint_refine(
+        mask=mask,
+        image_latents = first_step_outpaint_latents,
         prompt = job_input['step_1_prompt'],
         width = job_input['width'],
         height = job_input['height'],
@@ -251,9 +303,15 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         negative_prompt_2 = job_input['step_1_negative_prompt_2'],
         num_inference_steps = job_input['step_1_refiner_num_inference_steps'],
         guidance_scale = job_input['step_1_guidance_scale'],
+        output_type="pil",
+        strength=0.5,
     )
+
+    first_step_outpaint_image = first_step_outpaint_image[0]
+    print("successfully refined image")
+
     # First step outpaint image
-    first_step_outpaint_image.save("./debug/first_step_outpaint.png")
+    first_step_outpaint_image.save("./debug/first_step_post_refiner.png")
     
     # 2. Create second step canny edge
     second_step_canny_edge = create_canny_edge_image(first_step_outpaint_image)
@@ -261,8 +319,8 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
 
     # save the rehydrated canny
     rehydrated_canny.save("./debug/rehydrated_canny.png")
-   
-    # 3. Second step outpaint
+
+    ################################################## 3. Second step outpaint ##################################################
     second_step_outpaint_latents = second_step_controlnet_inpaint(
         image=image,
         canny_image=rehydrated_canny,
@@ -271,7 +329,18 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         job_input=job_input,
     )
 
-    second_step_image_output = sdxl_refine(
+    intermediary_image = MODELS.sdxl_canny_controlnet_inpaint.vae.decode(
+        second_step_outpaint_latents / MODELS.sdxl_canny_controlnet_inpaint.vae.config.scaling_factor,
+        return_dict=False,
+    )[0].detach()
+    intermediary_image =  MODELS.sdxl_canny_controlnet_inpaint.image_processor.postprocess(intermediary_image, output_type="pil")
+    intermediary_image = StableDiffusionXLPipelineOutput(images=intermediary_image)
+    intermediary_image = intermediary_image.images[0]
+    intermediary_image.save("./debug/second_step_pre_refiner.png")
+
+    print("successfully created second step outpaint")
+    second_step_refined_latents = sdxl_inpaint_refine(
+        mask=mask,
         image_latents = second_step_outpaint_latents,
         prompt = job_input['step_1_prompt'],
         width = job_input['width'],
@@ -281,11 +350,26 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         negative_prompt_2 = job_input['step_2_negative_prompt_2'],
         num_inference_steps = job_input['step_2_refiner_num_inference_steps'],
         guidance_scale = job_input['step_2_guidance_scale'],
+        output_type="latent",
+        strength=0.5,
     )
+    
+    final_output = sdxl_refine(
+        image_latents = second_step_refined_latents,
+        prompt = job_input['step_1_prompt'],
+        width = job_input['width'],
+        height = job_input['height'],
+        negative_prompt = job_input['step_2_negative_prompt'],
+        prompt_2 = job_input['step_2_prompt_2'],
+        negative_prompt_2 = job_input['step_2_negative_prompt_2'],
+        num_inference_steps = job_input['step_3_refiner_num_inference_steps'],
+        guidance_scale = job_input['step_2_guidance_scale'],
+    )
+    print("successfully refined second step image")
 
     # Save the image
-    second_step_image_output.save("./debug/final_output.png")
-    return second_step_image_output
+    final_output[0].save("./debug/final_output.png")
+    return final_output
 
 
 @torch.inference_mode()

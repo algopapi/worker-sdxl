@@ -1,7 +1,7 @@
 # builder/model_fetcher.py
 
 import torch
-from diffusers import (ControlNetModel,
+from diffusers import (ControlNetModel, DiffusionPipeline,
                        StableDiffusionXLControlNetInpaintPipeline,
                        StableDiffusionXLInpaintPipeline)
 
@@ -50,8 +50,9 @@ def get_diffusion_pipelines():
         "variant": "fp16",
         "use_safetensors": True
     }
-    sdxl_inpaint_pipe = fetch_pretrained_model(StableDiffusionXLInpaintPipeline,
-                            "diffusers/stable-diffusion-xl-1.0-inpainting-0.1", **common_args)
+    
+    sdxl_refiner_pipe = fetch_pretrained_model(DiffusionPipeline,
+                            "stabilityai/stable-diffusion-xl-refiner-1.0", **common_args)
     
     controlnet = fetch_pretrained_model(ControlNetModel, "diffusers/controlnet-canny-sdxl-1.0",
                                         **common_args)
@@ -63,7 +64,7 @@ def get_diffusion_pipelines():
         **common_args
     )
                                                           
-    return sdxl_inpaint_pipe, sdxl_contorlnet_inpaint_pipe, controlnet
+    return sdxl_refiner_pipe, sdxl_contorlnet_inpaint_pipe, controlnet
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "input": {
-    "step_1_prompt": "A realistic interior photograph of a modern living room with a wooden coffee table and a guy sitting next to it.",
+    "step_1_prompt": "A marble dining table inside a modern, minialistic living room with curtains in the background and elegant lighting",
     "image_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myImage.png",
     "mask_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myMask.png"
   }
