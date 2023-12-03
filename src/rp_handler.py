@@ -10,9 +10,10 @@ import cv2
 import numpy as np
 import runpod
 import torch
-from diffusers import (ControlNetModel, DDIMScheduler, DiffusionPipeline,
-                       DPMSolverMultistepScheduler, EulerDiscreteScheduler,
-                       LMSDiscreteScheduler, PNDMScheduler,
+from diffusers import (AutoencoderKL, ControlNetModel, DDIMScheduler,
+                       DiffusionPipeline, DPMSolverMultistepScheduler,
+                       EulerDiscreteScheduler, LMSDiscreteScheduler,
+                       PNDMScheduler,
                        StableDiffusionXLControlNetInpaintPipeline,
                        StableDiffusionXLInpaintPipeline)
 from diffusers.pipelines.stable_diffusion_xl.pipeline_output import \
@@ -35,34 +36,41 @@ class ModelHandler:
         self.load_models()
     
     def load_sdxl_refiner(self):
+        vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+
         sdxl_refiner = DiffusionPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
-            #torch_dtype=torch.float16,
-            #variant="fp16",
+            torch_dtype=torch.float16,
+            vae=vae,
+            variant="fp16",
         ).to("cuda")
         sdxl_refiner.enable_xformers_memory_efficient_attention()
         return sdxl_refiner
     
     def load_sdxl_canny_controlnet_inpaint(self):
+        vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+
         canny_controlnet = ControlNetModel.from_pretrained(
             "diffusers/controlnet-canny-sdxl-1.0",
-            #torch_dtype=torch.float16,
-            #variant="fp16",
+            vae=vae,
+            torch_dtype=torch.float16,
+            variant="fp16",
         )
 
         sdxl_controlnet_outpaint_pipe = StableDiffusionXLControlNetInpaintPipeline.from_pretrained(
             "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
             controlnet=canny_controlnet,
-            #torch_dtype=torch.float16,
-            #variant="fp16",
+            vae=vae,
+            torch_dtype=torch.float16,
+            variant="fp16",
         ).to("cuda")
 
         sdxl_inpaint_refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
             text_encoder_2=sdxl_controlnet_outpaint_pipe.text_encoder_2,
             vae=sdxl_controlnet_outpaint_pipe.vae,
-            #torch_dtype=torch.float16,
-            #variant="fp16"
+            torch_dtype=torch.float16,
+            variant="fp16"
         ).to("cuda")
 
         sdxl_inpaint_refiner.enable_xformers_memory_efficient_attention()
