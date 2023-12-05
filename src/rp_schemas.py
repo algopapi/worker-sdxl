@@ -48,7 +48,7 @@ INPUT_SCHEMA = {
     'step_1_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 25
+        'default': 50
     },
     'step_1_guidance_scale': {
         'type': float,
@@ -74,7 +74,12 @@ INPUT_SCHEMA = {
     'step_1_refiner_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 50,
+        'default': 15,
+    },
+    'step_1_refiner_strength': {
+        'type': float,
+        'required': False,
+        'default': 0.5
     },
     # STEP 2 PARAMS
     'step_2_prompt': {
@@ -126,13 +131,18 @@ INPUT_SCHEMA = {
     'step_2_refiner_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 50
+        'default': 15,
+    },
+    'step_2_refiner_strength': {
+        'type': float,
+        'required': False,
+        'default': 0.5
     },
     # STEP 3 (QUICK REFINER)
     'step_3_refiner_num_inference_steps': {
         'type': int,
         'required': False,
-        'default': 6
+        'default': 8,
     },
 
 }

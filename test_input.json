@@ -1,6 +1,6 @@
 {
   "input": {
-    "step_1_prompt": "A marble dining table inside a modern, minialistic living room with curtains in the background and elegant lighting",
+    "step_1_prompt": "A small wooden coffee table inside a modern living room with a large window in the background overseeing new york city",
     "image_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myImage.png",
     "mask_url": "https://furnish-runpod-images.s3.eu-central-1.amazonaws.com/myMask.png"
   }

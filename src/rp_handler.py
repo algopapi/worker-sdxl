@@ -176,7 +176,7 @@ def first_step_controlnet_inpaint(image: Image.Image, canny_image: Image.Image, 
         output_type="latent",
     ).images
 
-def second_step_controlnet_inpaint(image: Image.Image, canny_image: Image.Image, mask: Image.Image, prompt: str, job_input):
+def second_step_controlnet_inpaint(image: Image.Image, canny_image: Image.Image, mask: Image.Image, prompt: str, job_input, denoising_start):
     """
     Takes an image, applies Canny edge detection, and returns the resulting image.
 
@@ -198,11 +198,12 @@ def second_step_controlnet_inpaint(image: Image.Image, canny_image: Image.Image,
         prompt_2=job_input['step_2_prompt_2'],
         negative_prompt_2=job_input['step_2_negative_prompt_2'],
         controlnet_conditioning_scale=job_input['step_2_controlnet_conditioning_scale'],
-        num_inference_steps=job_input['step_2_num_inference_steps'],
+        num_inference_steps=70,
         guidance_scale=job_input['step_2_guidance_scale'],
         num_images_per_prompt=job_input['step_2_num_images'],
         output_type="latent",
         #generator=generator,
+        denoising_start=denoising_start,
     ).images
 
 def sdxl_inpaint_refine(
@@ -218,6 +219,8 @@ def sdxl_inpaint_refine(
         guidance_scale: float,
         output_type: str,
         strength: float,
+        denoising_start: float = None,
+        denoising_end: float = None,
 )-> Image.Image:
     return MODELS.sdxl_inpaint_refiner(
         prompt=prompt,
@@ -232,6 +235,8 @@ def sdxl_inpaint_refine(
         num_inference_steps=num_inference_steps,
         guidance_scale=guidance_scale,
         output_type=output_type,
+        denoising_start=denoising_start,
+        #denoising_end=denoising_end,
     ).images
 
 def sdxl_refine(
@@ -244,6 +249,7 @@ def sdxl_refine(
         negative_prompt_2: str,
         num_inference_steps: int,
         guidance_scale: float,
+        denoising_start: float = None,
 )-> Image.Image:
     return MODELS.sdxl_refiner(
         prompt=prompt,
@@ -255,11 +261,13 @@ def sdxl_refine(
         negative_prompt_2=negative_prompt_2,
         num_inference_steps=num_inference_steps,
         guidance_scale=guidance_scale,
+        denoising_start=denoising_start,
     ).images
 
 def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
     step_1_prompt = job_input['step_1_prompt']
     step_2_prompt = job_input['step_2_prompt']
+
 
     if step_2_prompt is None:
         step_2_prompt = step_1_prompt
@@ -275,8 +283,8 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
     image = load_image(image).convert("RGB")
     mask = load_image(mask).convert("RGB")
 
-    image.save("original_image.png")
-    mask.save("original_mask.png")
+    # image.save("original_image.png")
+    # mask.save("original_mask.png")
 
     # 1. Create first step canny edge
     first_step_canny_edge = create_canny_edge_image(image)
@@ -312,7 +320,8 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         num_inference_steps = job_input['step_1_refiner_num_inference_steps'],
         guidance_scale = job_input['step_1_guidance_scale'],
         output_type="pil",
-        strength=0.5,
+        strength=job_input['step_1_refiner_strength'],
+        # denoising_start=0.7,
     )
 
     first_step_outpaint_image = first_step_outpaint_image[0]
@@ -335,6 +344,8 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         mask=mask,
         prompt=step_2_prompt,
         job_input=job_input,
+        # denoising_end=0.7,
+        denoising_start=0.7,
     )
 
     intermediary_image = MODELS.sdxl_canny_controlnet_inpaint.vae.decode(
@@ -356,28 +367,33 @@ def sdxl_multi_step_inpaint(job_input: INPUT_SCHEMA):
         negative_prompt = job_input['step_2_negative_prompt'],
         prompt_2 = job_input['step_2_prompt_2'],
         negative_prompt_2 = job_input['step_2_negative_prompt_2'],
-        num_inference_steps = job_input['step_2_refiner_num_inference_steps'],
+        num_inference_steps = 70,
         guidance_scale = job_input['step_2_guidance_scale'],
-        output_type="latent",
-        strength=0.5,
+        output_type="pil",
+        strength=1.0,
+        denoising_start = 0.7,
+        # denoising_end = 0.9,
     )
     
-    final_output = sdxl_refine(
-        image_latents = second_step_refined_latents,
-        prompt = job_input['step_1_prompt'],
-        width = job_input['width'],
-        height = job_input['height'],
-        negative_prompt = job_input['step_2_negative_prompt'],
-        prompt_2 = job_input['step_2_prompt_2'],
-        negative_prompt_2 = job_input['step_2_negative_prompt_2'],
-        num_inference_steps = job_input['step_3_refiner_num_inference_steps'],
-        guidance_scale = job_input['step_2_guidance_scale'],
-    )
-    print("successfully refined second step image")
+    second_step_refined_latents[0].save("./debug/final_output.png")
 
-    # Save the image
-    final_output[0].save("./debug/final_output.png")
-    return final_output
+    # final_output = sdxl_refine(
+    #     image_latents = second_step_refined_latents,
+    #     prompt = job_input['step_1_prompt'],
+    #     width = job_input['width'],
+    #     height = job_input['height'],
+    #     negative_prompt = job_input['step_2_negative_prompt'],
+    #     prompt_2 = job_input['step_2_prompt_2'],
+    #     negative_prompt_2 = job_input['step_2_negative_prompt_2'],
+    #     num_inference_steps = job_input['step_2_refiner_num_inference_steps'],
+    #     guidance_scale = job_input['step_2_guidance_scale'],
+    #     # denoising_start = 0.9,
+    # )
+    # print("successfully refined second step image")
+
+    #Save the image
+    #final_output[0].save("./debug/final_output.png")
+    return second_step_refined_latents
 
 
 @torch.inference_mode()
